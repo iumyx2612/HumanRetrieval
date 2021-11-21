@@ -1,0 +1,12 @@
+Classification/Dataset
+Classification/weights
+Detection/results
+Detection/train_models
+Detection/image_output
+.idea
+__pycache__
+*.docx
+*.txt
+*.pyc
+main.py
+*.mp4
