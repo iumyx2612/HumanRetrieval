@@ -20,7 +20,7 @@ def config_Yolact(yolact_weight):
     set_cfg(config)
 
     with torch.no_grad():
-        if not os.path.exists('results'):
+        if not os.path.exists('Detection/results'):
             os.makedirs('results')
 
         # Use cuda
