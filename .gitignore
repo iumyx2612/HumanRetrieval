@@ -3,6 +3,7 @@ Classification/weights
 Detection/results
 Detection/train_models
 Detection/image_output
+results
 .idea
 __pycache__
 *.docx
