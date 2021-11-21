@@ -74,11 +74,25 @@ from deep_sort.deep_sort_pytorch.deep_sort import DeepSort
 
 def config_deepsort(deepsort_cfg):
 # initialize deepsort
-  cfg = get_config()
-  cfg.merge_from_file(deepsort_cfg)
-  deepsort = DeepSort(cfg.DEEPSORT.REID_CKPT,
+    cfg = get_config()
+    cfg.merge_from_file(deepsort_cfg)
+    deepsort = DeepSort(cfg.DEEPSORT.REID_CKPT,
                       max_dist=cfg.DEEPSORT.MAX_DIST, min_confidence=cfg.DEEPSORT.MIN_CONFIDENCE,
                       max_iou_distance=cfg.DEEPSORT.MAX_IOU_DISTANCE,
                       max_age=cfg.DEEPSORT.MAX_AGE, n_init=cfg.DEEPSORT.N_INIT, nn_budget=cfg.DEEPSORT.NN_BUDGET,
                       use_cuda=True)
-  return deepsort
+    return deepsort
+
+# ------------------------------------------------------------
+
+
+
+# Classification
+# ------------------------------------------------------------
+# TODO: create a yaml config file to load classification model from
+from Classification.modeling.model import Model
+
+def config_clsmodel(clsmodel_config):
+    pass
+
+# ------------------------------------------------------------
