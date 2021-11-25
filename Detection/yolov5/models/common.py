@@ -17,11 +17,11 @@ import torch.nn as nn
 from PIL import Image
 from torch.cuda import amp
 
-from yolov5.utils_yolov5.datasets import exif_transpose, letterbox
-from yolov5.utils_yolov5.general import colorstr, increment_path, make_divisible, non_max_suppression, save_one_box, \
+from Detection.yolov5.utils_yolov5.datasets import exif_transpose, letterbox
+from Detection.yolov5.utils_yolov5.general import colorstr, increment_path, make_divisible, non_max_suppression, save_one_box, \
     scale_coords, xyxy2xywh
-from yolov5.utils_yolov5.plots import Annotator, colors
-from yolov5.utils_yolov5.torch_utils import time_sync
+from Detection.yolov5.utils_yolov5.plots import Annotator, colors
+from Detection.yolov5.utils_yolov5.torch_utils import time_sync
 
 LOGGER = logging.getLogger(__name__)
 

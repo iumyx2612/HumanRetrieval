@@ -2,9 +2,9 @@ import torch
 import torchvision
 import torch.nn.functional as F
 from ..box_utils import decode, jaccard, index2d
-from yolact.utils import timer
+from Detection.yolact.utils import timer
 
-from yolact.data import cfg, mask_type
+from Detection.yolact.data import cfg, mask_type
 
 import numpy as np
 

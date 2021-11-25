@@ -26,10 +26,10 @@ from PIL import Image, ExifTags
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from yolov5.utils_yolov5.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
-from yolov5.utils_yolov5.general import check_dataset, check_requirements, check_yaml, clean_str, segments2boxes, \
+from Detection.yolov5.utils_yolov5.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
+from Detection.yolov5.utils_yolov5.general import check_dataset, check_requirements, check_yaml, clean_str, segments2boxes, \
     xywh2xyxy, xywhn2xyxy, xyxy2xywhn, xyn2xy
-from yolov5.utils_yolov5.torch_utils import torch_distributed_zero_first
+from Detection.yolov5.utils_yolov5.torch_utils import torch_distributed_zero_first
 
 # Parameters
 HELP_URL = 'https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data'
@@ -209,7 +209,7 @@ class LoadImages:  # for inference
                     ret_val, img0 = self.cap.read()
 
             self.frame += 1
-            print(f'video {self.count + 1}/{self.nf} ({self.frame}/{self.frames}) {path}: ', end='')
+            print(f'video {self.count + 1}/{self.nf} ({self.frame}/{self.frames}) {path}: ', end='\n')
 
         else:
             # Read image

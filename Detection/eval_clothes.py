@@ -215,14 +215,15 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
 # Pred one image.
 # Eval clothes
 def run_eval_clothes(net_yolact, search_clothes, img_numpy: np.ndarray):
-  global cls
-  cls = search_clothes
-  cfg.mask_proto_debug = False
+    global cls
+    cls = search_clothes
+    cfg.mask_proto_debug = False
 
-  frame = torch.from_numpy(img_numpy).cuda().float()
-  batch = FastBaseTransform()(frame.unsqueeze(0))
-  preds = net_yolact(batch)
+    frame = torch.from_numpy(img_numpy).cuda().float()
+    batch = FastBaseTransform()(frame.unsqueeze(0))
+    preds = net_yolact(batch)
+    # TODO: make prep_display always return Tensor -> easier to work with later
+    # TODO 2: replace prep_display with more elegant function
+    bbox = prep_display(preds, frame, None, None, undo_transform=False)
 
-  bbox = prep_display(preds, frame, None, None, undo_transform=False)
-
-  return bbox
+    return bbox

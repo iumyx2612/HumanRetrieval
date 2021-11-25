@@ -30,24 +30,14 @@ from yolact.layers.output_utils import postprocess, undo_image_transformation
 import pycocotools
 import eval_clothes
 
-from yolact.data import cfg, set_cfg, set_dataset
+from Detection.yolact.data import cfg, set_cfg, set_dataset
 
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 import argparse
-import time
-import random
-import cProfile
-import pickle
-import json
-import cv2
-from collections import defaultdict
 from pathlib import Path
-
-a = "Classification"
-print(os.path.isdir(a))
 
 # Yolov5
 from yolov5.models.experimental import attempt_load
@@ -61,8 +51,8 @@ from yolov5.utils_yolov5.torch_utils import load_classifier, select_device, time
 import yolov5.detect as detect
 
 # Deepsort
-from deep_sort.deep_sort_pytorch.utils.parser import get_config
-from deep_sort.deep_sort_pytorch.deep_sort import DeepSort
+from Detection.deep_sort.deep_sort_pytorch.utils.parser import get_config
+from Detection.deep_sort.deep_sort_pytorch.deep_sort import DeepSort
 
 # Draw plot
 from draw import *
@@ -73,11 +63,11 @@ from Classification.utils import utils
 from Classification.Classification_dict import dict as cls_dict
 
 # File train model with Yolact
-train_model_clothes = 'Detection/train_models/yolact_base_clothes_1_30000.pth'
+train_model_clothes = 'train_models/yolact_base_clothes_1_30000.pth'
 # File train model with Yolov5s
-train_model_human = 'Detection/train_models/yolo5s.pt'
+train_model_human = 'train_models/yolo5s.pt'
 # Config yaml by deepsort
-config_ds = 'Detection/train_models/deep_sort.yaml'
+config_ds = 'train_models/deep_sort.yaml'
 # deepsort weights 
 #weights_ds = 'Detection/train_models/ckpt.t7'
 
@@ -133,36 +123,33 @@ def add_args():
   return args
 
 # Config Yolact.
-def config_Yolact(config=None):
-  # Config file dataset
-  
-  if config is not None:
-    set_cfg(config)
-
-  if config is None:
-    model_path = SavePath.from_str(train_model_clothes)
-    # TODO: Bad practice? Probably want to do a name lookup instead.
+def config_Yolact(yolact_weight):
+    # Load config from weight
+    print("Loading YOLACT" + '-' * 10)
+    model_path = SavePath.from_str(yolact_weight)
     config = model_path.model_name + '_config'
+    print('Config not specified. Parsed %s from the file name.\n' % config)
     set_cfg(config)
 
-  with torch.no_grad():
-    if not os.path.exists('results'):
-      os.makedirs('results')
+    with torch.no_grad():
+      # Temporarily disable to check behavior
+      '''# Use cuda
+      use_cuda = True
+      if use_cuda:
+          cudnn.fastest = True
+          torch.set_default_tensor_type('torch.cuda.FloatTensor')
+      else:
+          torch.set_default_tensor_type('torch.FloatTensor')'''
 
-    # Use cuda
-    use_cuda = True
-    if use_cuda:
-      cudnn.fastest = True
-      torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    else:
-      torch.set_default_tensor_type('torch.FloatTensor')
-  
-    # Eval for image, images or video
-    net = Yolact()
-    net.load_weights(train_model_clothes)
-    net.eval()
+      # Eval for image, images or video
+      net = Yolact()
+      net.load_weights(yolact_weight)
+      net.eval()
+      print("Done loading YOLACT" + '-' * 10)
+      return net
 
-    return net
+
+# ------------------------------------------------------------
 
 # Config with YOLOv5
 def config_Yolov5(weights=train_model_human):
@@ -392,7 +379,7 @@ def run(args):
   
   # Config yolact
   global net_yolact
-  net_yolact = config_Yolact().cuda()
+  net_yolact = config_Yolact(train_model_clothes).cuda()
 
 
   # Config yolov5
