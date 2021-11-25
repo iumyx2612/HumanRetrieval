@@ -2,7 +2,8 @@
 import torch
 import torch.backends.cudnn as cudnn
 
-import os
+import os, sys
+sys.path.insert(0, "Detection")
 
 
 # YOLACT
@@ -11,18 +12,21 @@ from yolact.yolact import Yolact
 from yolact.data import set_cfg
 from yolact.utils.functions import SavePath
 
-def config_Yolact(yolact_weight):
+
+# TODO: make config as a parameter instead of using a global parameter from yolact.data
+def config_Yolact(yolact_weight, device):
     # Load config from weight
+    print("Loading YOLACT" + '-'*10)
     model_path = SavePath.from_str(yolact_weight)
-    # TODO: Bad practice? Probably want to do a name lookup instead.
     config = model_path.model_name + '_config'
     print('Config not specified. Parsed %s from the file name.\n' % config)
     set_cfg(config)
 
     with torch.no_grad():
-        if not os.path.exists('Detection/results'):
-            os.makedirs('results')
-
+        # Temporarily disable to check behavior
+        # Behavior: disabling this cause torch.Tensor(list, device='cuda') not working
+        # Currently enable for now
+        # TODO: Will find a workaround to disable this behavior
         # Use cuda
         use_cuda = True
         if use_cuda:
@@ -36,7 +40,7 @@ def config_Yolact(yolact_weight):
         net.load_weights(yolact_weight)
         net.eval()
         print("Done loading YOLACT" + '-'*10)
-        return net
+        return net.cuda()
 # ------------------------------------------------------------
 
 
@@ -44,17 +48,9 @@ def config_Yolact(yolact_weight):
 # YOLOv5
 # ------------------------------------------------------------
 from yolov5.models.experimental import attempt_load
-from yolov5.utils_yolov5.general import set_logging, check_img_size
-from yolov5.utils_yolov5.torch_utils import select_device
+from yolov5.utils_yolov5.general import check_img_size
 
-def config_Yolov5(yolo_weight, imgsz=640):
-    half = False
-    # Initialize
-
-    set_logging()
-    device = select_device('')
-    half &= device.type != 'cpu'  # half precision only supported on CUDA
-
+def config_Yolov5(yolo_weight, device, imgsz=416):
     # Load model
     model = attempt_load(yolo_weight, map_location=device)  # load FP32 model
     stride = int(model.stride.max())  # model stride
