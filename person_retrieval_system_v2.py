@@ -64,6 +64,17 @@ def run(args):
         dataset = LoadImages(args.source, img_size=imgsz, stride=strides) # (path, letterbox_img: np, orig_img: cv2, cap)
         bs = 1
 
+    # saving prediction video
+    if args.save_vid:
+        width = next(iter(dataset))[3].get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = next(iter(dataset))[3].get(cv2.CAP_PROP_FRAME_HEIGHT)
+        res = (int(width), int(height))
+        # this format fail to play in Chrome/Win10/Colab
+        fourcc = cv2.VideoWriter_fourcc(*'MP4V') #codec
+        # fourcc = cv2.VideoWriter_fourcc(*'H264') #codec
+        output = cv2.VideoWriter(args.savename, fourcc, 30, res)
+
+
     # Run Inference
     for path, im, im0s, vid_cap in dataset:
         annotator = Annotator(np.ascontiguousarray(im0s),
@@ -186,6 +197,12 @@ def run(args):
         else:
             cv2.waitKey(1)
 
+        # save preds
+        if args.save_vid:
+            output.write(im0s)
+
+
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -199,6 +216,8 @@ def parse_args():
     parser.add_argument('--yolo_maxdets', '--ymd', type=int, default=100)
     parser.add_argument('--humans', type=str, default="male")
     parser.add_argument('--clothes', type=str, default="short_sleeved_shirt")
+    parser.add_argument('--save_vid', action="store_true")
+    parser.add_argument('--savename', type=str, default="results/out.avi")
     args = parser.parse_args()
     return args
 
