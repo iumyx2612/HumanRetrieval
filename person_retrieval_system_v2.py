@@ -177,6 +177,7 @@ def run(args):
         # 4. Convert output from classification model to correct read-able format
         # 5. Draw bbox with type and color label
         # TODO: perform forward pass on batch of images instead of single image
+        t6 = time_sync()
         if isinstance(yolact_preds, torch.Tensor):
             bboxes = yolact_preds[:, :4]  # np.ndarray
             for bbox in bboxes:
@@ -188,6 +189,8 @@ def run(args):
                 type_pred, color_pred = utils.convert_output(cls_dict, cls_output)
                 s = f"{type_pred}, {color_pred}"
                 annotator.box_label(bbox, label=s, color=(0, 0, 255))
+        t7 = time_sync()
+        dt4 = t7 - t6
         # -----------------------------------------
 
         # show image
@@ -201,7 +204,8 @@ def run(args):
         if args.save_vid:
             output.write(im0s)
 
-
+        # time logging
+        print(f"Inference time \n YOLO: {dt1} \t YOLACT: {dt3} \t Classification: {dt4}")
 
 
 def parse_args():
