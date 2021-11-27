@@ -52,7 +52,7 @@ class ClothesClassificationDataset(Dataset):
                                  color_onehot.tolist())
                         value_list.append(value)
                     except ValueError as e:
-                        with open("../../Err.txt", 'a') as f:
+                        with open("Err.txt", 'a') as f:
                             f.write(folder + '/' + image_name + "\n")
                         pass
             dataframe = pd.DataFrame(value_list, columns=column_name)
