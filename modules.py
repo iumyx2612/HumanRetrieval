@@ -14,13 +14,15 @@ from yolact.utils.functions import SavePath
 
 
 # TODO: make config as a parameter instead of using a global parameter from yolact.data
-def config_Yolact(yolact_weight, device):
+def config_Yolact(yolact_weight):
     # Load config from weight
     print("Loading YOLACT" + '-'*10)
     model_path = SavePath.from_str(yolact_weight)
     config = model_path.model_name + '_config'
     print('Config not specified. Parsed %s from the file name.\n' % config)
-    set_cfg(config)
+    cfg = set_cfg(config)
+
+    names = cfg.dataset.class_names
 
     with torch.no_grad():
         # Temporarily disable to check behavior
@@ -40,7 +42,7 @@ def config_Yolact(yolact_weight, device):
         net.load_weights(yolact_weight)
         net.eval()
         print("Done loading YOLACT" + '-'*10)
-        return net.cuda()
+        return net.cuda(), names
 # ------------------------------------------------------------
 
 
