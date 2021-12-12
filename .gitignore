@@ -1,9 +1,11 @@
 Classification/Dataset
 Classification/weights
+Classification/NewDataset
 Detection/results
 Detection/train_models
 Detection/image_output
 results
+Test
 .idea
 __pycache__
 *.docx
