@@ -2,12 +2,12 @@ from efficientnet_pytorch import EfficientNet
 from efficientnet_pytorch import utils
 
 import numpy as np
+import os
+import yaml
 
 import torch
 import torch.nn as nn
 from torchvision import transforms
-
-from Classification.utils.utils import get_imgsz
 
 
 class Model(nn.Module):
@@ -50,6 +50,7 @@ class Model(nn.Module):
             if imgs.ndim != 4:
                 imgs = np.expand_dims(imgs, axis=0) # b, h, w, c
             imgs = imgs.transpose((0, 3, 1, 2)) # to b, c, h, w
+            imgs = imgs.copy()
             imgs = torch.from_numpy(imgs) # torch.Tensor
         # sanity check
         assert isinstance(imgs, torch.Tensor), "input must be a numpy array or torch Tensor"
@@ -58,5 +59,18 @@ class Model(nn.Module):
         imgs = transforms.Resize((self.imgsz, self.imgsz))(imgs)
         imgs = imgs / 255.
         return imgs
+
+    def from_config(self, config):
+        if os.path.isfile(config):
+            with open(config) as f:
+                cfg = yaml.safe_load(f)
+        if isinstance(config, dict):
+            cfg = config
+        else:
+            raise
+        self.base_model = cfg["extractor"]
+        self.num_cls1 = len(cfg["num_cls1"])
+        self.num_csl2 = len(cfg["num_cls2"])
+
 
 

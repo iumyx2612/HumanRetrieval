@@ -69,7 +69,7 @@ def convert_output(dict: dict, input):
     type_output = torch.argmax(type_output, dim=1).cpu().detach().numpy() # return a numpy array
 
     color_output = input[1]
-    color_output = torch.tensor(color_output > 0.5, dtype=torch.int)
+    color_output = (color_output > 0.5).type(torch.int)
     color_output = color_output.cpu().detach().numpy()
 
     type_pred = types[int(type_output)]

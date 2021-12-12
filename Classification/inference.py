@@ -19,7 +19,7 @@ def run(args):
                   use_pretrained=False,
                   num_class_1=args.num_cls1,
                   num_class_2=args.num_cls2)
-    model.load_state_dict(torch.load(args.weights))
+    model.load_state_dict(torch.load(args.weights)['state_dict'])
     model.to(device)
     model.eval()
 
@@ -39,7 +39,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--base_model', default='efficientnet-b0', type=str, help='feature extractor')
-    parser.add_argument('--weights', required=True, type=str, help='path to weights for model')
+    parser.add_argument('--weights', default="weights/little_3_12.pt", type=str, help='path to weights for model')
     parser.add_argument('--num_cls1', required=True, type=int, help='number of class 1')
     parser.add_argument('--num_cls2', required=True, type=int, help='number of class 2')
     parser.add_argument('--image_path', required=True, type=str, help='path to image')

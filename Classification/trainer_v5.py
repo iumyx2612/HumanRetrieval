@@ -1,15 +1,14 @@
 import argparse
-import copy
 from tqdm import tqdm
 import time
 import shutil
-import os
+
 
 import torch
 
 from modeling.model import Model
 from utils.loss import Loss
-from utils.dataset_utils import *
+from utils.datasets import *
 from Classification_dict import dict as cls_dict
 from utils.utils import get_imgsz, select_device
 from utils.metrics import accuracy, AverageMeter
@@ -159,7 +158,7 @@ def run(args):
                       train_dataset.color_len).to(device)
 
     # Build loss
-    loss = Loss(device, train_dataset.type_len)
+    loss = Loss(train_dataset.type_len)
 
     # Build optimizer
     optimizer = torch.optim.Adam(model.parameters(), 1e-4)

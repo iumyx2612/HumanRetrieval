@@ -4,7 +4,7 @@ import torch.nn as nn
 
 
 class Loss():
-    def __init__(self, gpu, num_cls1):
+    def __init__(self, num_cls1):
         #define criteria
         self.num_cls1 = num_cls1
         self.type_criterion = nn.CrossEntropyLoss()
