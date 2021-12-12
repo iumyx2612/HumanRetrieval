@@ -874,6 +874,7 @@ def set_cfg(config_name:str):
     if cfg.name is None:
         cfg.name = config_name.split('_config')[0]
     print(f"Setting YOLACT config from {cfg.name}")
+    return cfg # add return config to pass it to anywhere using this function without accessing global cfg cuz it's dumb
 
 def set_dataset(dataset_name:str):
     """ Sets the dataset of the current config. """

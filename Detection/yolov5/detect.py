@@ -21,14 +21,15 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = ROOT.relative_to(Path.cwd())  # relative
 
-from yolov5.models.experimental import attempt_load
-from yolov5.utils_yolov5.datasets import LoadImages, LoadStreams
-from yolov5.utils_yolov5.general import apply_classifier, check_img_size, check_imshow, check_requirements, check_suffix, colorstr, \
+
+from models.experimental import attempt_load
+from utils_yolov5.datasets import LoadImages, LoadStreams
+from utils_yolov5.general import apply_classifier, check_img_size, check_imshow, check_requirements, check_suffix, colorstr, \
     increment_path, non_max_suppression, print_args, save_one_box, scale_coords, set_logging, \
     strip_optimizer, xyxy2xywh
-from yolov5.utils_yolov5.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
-from yolov5.utils_yolov5.plots import Annotator, colors
-from yolov5.utils_yolov5.torch_utils import load_classifier, select_device, time_sync
+from utils_yolov5.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
+from utils_yolov5.plots import Annotator, colors
+from utils_yolov5.torch_utils import load_classifier, select_device, time_sync
 
 train_model_human = '/content/gdrive/MyDrive/Person_retrival_system/Person_retrival_system/yolo5s.pt'
 
