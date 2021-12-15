@@ -11,9 +11,11 @@ from torch.nn.functional import one_hot
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
+from utils.augumentation import Augmentation
+
 
 class ClothesClassificationDataset(Dataset):
-    def __init__(self, root_dir, csv_file, dict: dict, imgsz):
+    def __init__(self, root_dir, csv_file, dict: dict, imgsz, augment=False, augment_config=None):
         self.root_dir = root_dir
         self.csv_file = csv_file
         self.type_len = len(dict["Type"])
@@ -21,6 +23,11 @@ class ClothesClassificationDataset(Dataset):
         self.clothes_type = dict["Type"]
         self.clothes_color = dict["Color"]
         self.imgsz = imgsz
+        self.augment = augment
+        if self.augment:
+            self.augment_config = augment_config
+            self.transform = Augmentation(self.augment_config)
+            self.transform.define_aug()
 
     def get_csv(self):
         csv_path = os.path.join(self.root_dir, self.csv_file)
@@ -68,14 +75,15 @@ class ClothesClassificationDataset(Dataset):
 
 
     def __getitem__(self, idx):
-        """
-        function return a sample of data as a dictionary below
-        """
         dataframe = self.get_csv()
         image_name = dataframe.iloc[idx, 0]
         image = cv2.imread(os.path.join(self.root_dir, image_name))
-        image = image[:, :, ::-1].transpose(2, 0, 1) #from BGR to RGB and (C,H,W)
-        image = np.ascontiguousarray(image) # for faster accessing, C++ backend
+        image = image[:, :, ::-1] # BGR to RGB
+        # transform
+        if self.augment:
+            image = self.transform(image)
+        image = image.transpose(2, 0, 1) # (C,H,W)
+        image = np.ascontiguousarray(image) # for faster accessing
         type = dataframe.iloc[idx, 1]
         color = dataframe.iloc[idx, 2]
         type_onehot = torch.tensor(literal_eval(dataframe.iloc[idx, 3]), dtype=torch.float)
@@ -113,8 +121,9 @@ class ClothesClassificationDataset(Dataset):
 
 
 
-def create_dataloader(root_dir, csv_file, cls_dict, image_size, batch_size, workers=2):
-    dataset = ClothesClassificationDataset(root_dir, csv_file, cls_dict, image_size)
+def create_dataloader(root_dir, csv_file, cls_dict, image_size, batch_size,
+                      augment=False, augment_config=None, workers=2):
+    dataset = ClothesClassificationDataset(root_dir, csv_file, cls_dict, image_size, augment, augment_config)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
     return dataloader, dataset
 
