@@ -71,6 +71,15 @@ class Augmentation:
             self.augs.update({
                 "downscale": self.downscale
             })
+        if self.config["albumentation"]["affine"]["prob"] > 0:
+            self.affine = A.Affine(
+                scale=self.config["albumentation"]["affine"]["scale"],
+                translate_percent=self.config["albumentation"]["affine"]["translate_percent"],
+                rotate=self.config["albumentation"]["affine"]["rotate"],
+                shear=self.config["albumentation"]["affine"]["shear"],
+                fit_output=self.config["albumentation"]["affine"]["fit_output"],
+                p=self.config["albumentation"]["affine"]["prob"]
+            )
 
         list_transforms = [self.augs[transform] for transform in self.augs.keys()]
 

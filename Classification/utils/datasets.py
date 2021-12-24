@@ -11,7 +11,7 @@ from torch.nn.functional import one_hot
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
-from utils.augumentation import Augmentation
+from utils.augmentation import Augmentation
 
 
 class ClothesClassificationDataset(Dataset):
@@ -118,7 +118,6 @@ class ClothesClassificationDataset(Dataset):
         with open(os.path.join(self.root_dir, "statistic.cache"), 'rb') as f:
             num_color_dict = pickle.load(f)
         return num_color_dict
-
 
 
 def create_dataloader(root_dir, csv_file, cls_dict, image_size, batch_size,
