@@ -9,14 +9,14 @@ class AverageMeter(object):
         self.reset()
 
     def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
+        self.value = torch.tensor([0], dtype=torch.float)
+        self.avg = torch.tensor([0], dtype=torch.float)
+        self.sum = torch.tensor([0], dtype=torch.float)
+        self.count = torch.tensor([0], dtype=torch.int)
 
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
+    def update(self, value, n=1):
+        self.value = value
+        self.sum += value * n
         self.count += n
         self.avg = self.sum / self.count
 
@@ -27,16 +27,16 @@ def accuracy(output, target, dataset: ClothesClassificationDataset):
         batch_size = target.size(0)
 
         # split target
-        type_target = target[:, :dataset.type_len] # shape(batch, dataset.type_len)
-        type_target = convert_categorial(type_target) # shape(batch)
-        color_target = target[:, dataset.type_len:] #shape(batch, dataset.color_len)
+        type_target = target[:, :dataset.type_len] # torch.Tensor(batch, dataset.type_len)
+        type_target = convert_categorial(type_target) # torch.Tensor(batch)
+        color_target = target[:, dataset.type_len:] # torch.Tensor(batch, dataset.color_len)
 
         # convert output
-        type_output = output[0] #shape(batch, dataset.type_len)
+        type_output = output[0] # torch.Tensor(batch, dataset.type_len)
         type_output = torch.softmax(type_output, dim=1)
-        type_output = torch.argmax(type_output, dim=1) #shape(batch)
+        type_output = torch.argmax(type_output, dim=1) # torch.Tensor(batch)
         color_output = output[1]
-        color_output = (color_output > 0.5).type(torch.int) #shape(batch, dataset.color_len)
+        color_output = (color_output > 0.5).type(torch.int) # torch.Tensor(batch, dataset.color_len)
 
         # compute acc for type
         type_correct = type_target.eq(type_output).type(torch.int)
@@ -52,8 +52,24 @@ def accuracy(output, target, dataset: ClothesClassificationDataset):
         confusion_vector = color_output / color_target
         color_matching = torch.tensor([0] * dataset.color_len)
         for i in range(dataset.color_len):
-            color_matching[i] = torch.sum(confusion_vector[:, i] == 1)
-    return type_acc, color_matching
+            color_matching[i] = torch.sum(confusion_vector[:, i] == 1) # torch.Tensor(color_len)
+    return type_acc, color_matching # torch.Tensor(1), torch.Tensor(color_len)
+
+
+def fitness(metrics, weights=None, useloss=True):
+    """ Model fitness as weighted combination of metrics
+    weight for total_loss, type_loss, color_loss, type_acc, avg_color_acc
+
+    """
+    assert metrics.shape == weights.shape, "Metrics and weights combination must have same shape"
+    if weights is None:
+        weights = torch.tensor([0.5, 0.2, 0.3, 0.0, 0.0]) # default use loss not acc
+        # the smaller the loss the better
+        return 1.0 - torch.matmul(metrics, weights) # -> the
+    elif not useloss:
+        if weights is None:
+            weights = torch.tensor([0.0, 0.0, 0.0, 0.5, 0.5])
+
 
 
 if __name__ == '__main__':

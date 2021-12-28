@@ -13,7 +13,7 @@ class Loss():
     def __call__(self, predictions, targets):
         """
         function to calculate loss when pass in parameters
-        :param predictions: List of size 2 [torch.Tensor of type_preds, torch.Tensor of color_preds]
+        :param predictions: List of size 2 [type_preds: torch.Tensor, color_preds:torch.Tensor]
         :param targets: Tensor of size (batch, type_target + color_target)
         :return: total loss
         """
