@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 from utils.utils import convert_categorial
-from utils.datasets import ClothesClassificationDataset
+from utils.dataset import ClothesClassificationDataset
 
 
 class AverageMeter(object):

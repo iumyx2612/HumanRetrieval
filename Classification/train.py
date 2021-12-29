@@ -10,7 +10,7 @@ import numpy as np
 
 from modeling.model import Model
 from utils.loss import Loss
-from utils.dataset_v2 import create_dataloader
+from utils.dataset import create_dataloader
 from utils.utils import get_imgsz, select_device
 from utils.metrics import accuracy, AverageMeter, fitness
 import val

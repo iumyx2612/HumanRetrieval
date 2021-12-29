@@ -7,7 +7,7 @@ import torch
 
 from modeling.model import Model
 from utils.loss import Loss
-from utils.dataset_v2 import create_dataloader, ClothesClassificationDataset
+from utils.dataset import create_dataloader, ClothesClassificationDataset
 from utils.utils import get_imgsz, select_device
 from utils.metrics import accuracy, AverageMeter
 
