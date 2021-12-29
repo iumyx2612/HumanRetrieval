@@ -8,7 +8,12 @@ logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 map_size_model = {
-    "efficientnet-b0": 224
+    "efficientnet-b0": 224,
+    "efficientnet-b1": 240,
+    "efficientnet-b2": 260,
+    "efficientnet-b3": 300,
+    "efficientnet-b4": 380,
+    "efficientnet-b5": 456
 }
 
 

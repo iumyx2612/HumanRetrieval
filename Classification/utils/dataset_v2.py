@@ -29,7 +29,7 @@ class ClothesClassificationDataset(Dataset):
         self.clothes_color = dict["Color"]
         self.imgsz = imgsz
         self.augment = augment
-        if self.augment:
+        if self.augment and augment_config is not None:
             self.augment_config = augment_config
             self.transform = Augmentation(self.augment_config)
             self.transform.define_aug()

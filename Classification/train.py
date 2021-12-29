@@ -3,14 +3,17 @@ from tqdm import tqdm
 import shutil
 import time
 import yaml
+import argparse
 
 import torch
+import numpy as np
 
 from modeling.model import Model
 from utils.loss import Loss
 from utils.dataset_v2 import create_dataloader
 from utils.utils import get_imgsz, select_device
 from utils.metrics import accuracy, AverageMeter, fitness
+import val
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -79,7 +82,7 @@ def run(args):
         start_epoch = checkpoint['epoch']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        print(f"Loaded checkpoint, start at epoch: {start_epoch}")
+        print(f"Loaded checkpoint, start at epoch: {start_epoch + 1}")
     else:
         start_epoch = 0
 
@@ -97,7 +100,7 @@ def run(args):
         type_losses = AverageMeter()
         color_losses = AverageMeter()
         acc1 = AverageMeter()  # acc for clothes type
-        acc2 = torch.tensor([0] * dataset.color_len)  # number of correct color predictions
+        correct_colors = np.array([0] * train_dataset.color_len, dtype=np.int)  # number of correct color predictions
 
         model.train() # set the model to training mode
 
@@ -115,12 +118,14 @@ def run(args):
             total_loss, type_loss, color_loss = loss(outputs, targets) # torch.Tensor
 
             # accuracy and loss
-            type_acc, color_matching = accuracy(outputs, targets, dataset) # torch.Tensor
-            acc1.update(type_acc, inputs.size(0))
-            acc2 += color_matching
-            losses.update(total_loss, inputs.size(0))
-            type_losses.update(type_loss, inputs.size(0))
-            color_losses.update(color_loss, inputs.size(0))
+            # type_acc: torch.Tensor on device
+            # color_matching: torch.Tensor on cpu
+            type_acc, color_matching = accuracy(outputs, targets, train_dataset)
+            acc1.update(type_acc.item(), inputs.size(0))
+            correct_colors += color_matching.numpy()
+            losses.update(total_loss.item(), inputs.size(0))
+            type_losses.update(type_loss.item(), inputs.size(0))
+            color_losses.update(color_loss.item(), inputs.size(0))
 
             # compute gradient and optimizer step
             optimizer.zero_grad()
@@ -129,9 +134,9 @@ def run(args):
 
         # compute color acc
         num_color_dict = train_dataset.get_statistic()
-        total_color = torch.tensor(list(num_color_dict.values()))
-        color_acc = acc2 / total_color # torch.Tensor
-        avg_color_acc = torch.sum(color_acc) / train_dataset.color_len
+        total_color = np.array(list(num_color_dict.values()))
+        color_acc = correct_colors / total_color
+        avg_color_acc = np.sum(color_acc) / train_dataset.color_len
 
         end = time.time()
         epoch_time = end - start
@@ -139,23 +144,62 @@ def run(args):
 
         # logging
         s = ""
-        for i in range(dataset.color_len):
-            s += f'{dataset.clothes_color[i]} acc: {color_acc[i]:.4f} \t'
-        print(f'Total loss: {losses.avg.item():.4f} \t'
-              f'Type loss: {type_losses.avg.item():.4f} \t'
-              f'Color loss: {color_losses.avg.item():.4f} \t'
-              f'Type acc: {acc1.avg.item():.4f} \t'
+        for i in range(train_dataset.color_len):
+            s += f'{train_dataset.clothes_color[i]} acc: {color_acc[i]:.4f} \t'
+        print(f'Total loss: {losses.avg:.4f} \t'
+              f'Type loss: {type_losses.avg:.4f} \t'
+              f'Color loss: {color_losses.avg:.4f} \t'
+              f'Type acc: {acc1.avg:.4f} \t'
               f'Avg color acc: {avg_color_acc:.4f} \n'
               f'{s} \n')
 
         if not args.noval:
-            pass
+            print(f"Validating on epoch {epoch + 1}")
+            losses, type_loss, color_loss, acc1, avg_color_acc = val.run(
+                val_dataset, val_loader, device=device, loss=loss, model=model, epoch=epoch
+            )
 
-        metrics = torch.cat((losses.avg, type_losses.avg, color_losses.avg, acc1.avg, avg_color_acc.avg),
-                            dim=0)
+        # metrics for monitoring
+        metrics = np.array((losses.avg, type_losses.avg, color_losses.avg, acc1.avg, avg_color_acc))
 
+        # save checkpoint
         fi = fitness(metrics.flatten())
         if fi > best_fitness:
             best_fitness = fi
-            print(f"Saving model with fitness {fi}")
+            print(f"Saving best model with fitness {fi:.4f}")
+            state = {
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict()
+            }
+            save_ckpt(save_dir, state, is_best=True)
+        else:
+            state = {
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict()
+            }
+            save_ckpt(save_dir, state)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--dataset', default="config/dataset.yaml", type=str, help='path to dataset.yaml')
+    parser.add_argument('--augmentation', default=None, type=str, help='path to augmentation.yaml')
+    parser.add_argument('--batch_size', type=int, default=32, help='batch size')
+    parser.add_argument('--workers', type=int, default=2, help='number of workers')
+    parser.add_argument('--extractor', type=str, default='efficientnet-b0', help='base feature extractor')
+    parser.add_argument('--pretrained', action='store_true', help='load EfficientNet with ImageNet pretrained weights')
+    parser.add_argument('--resume', action='store_true', help='load entire model with your trained weights')
+    parser.add_argument('--weight', type=str, required=False, help='path to your trained weights')
+    parser.add_argument('--epochs', type=int, default=50, help='number of training epochs')
+    parser.add_argument('--save_dir', type=str, required=False, help='path to save your training model weights')
+    parser.add_argument('--noval', action='store_true', help="flag to set if don't want to evaluate on a validation set")
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    run(args)
 

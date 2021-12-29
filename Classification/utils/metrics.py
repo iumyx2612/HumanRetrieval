@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+
 from utils.utils import convert_categorial
 from utils.datasets import ClothesClassificationDataset
 
@@ -9,14 +11,14 @@ class AverageMeter(object):
         self.reset()
 
     def reset(self):
-        self.value = torch.tensor([0], dtype=torch.float)
-        self.avg = torch.tensor([0], dtype=torch.float)
-        self.sum = torch.tensor([0], dtype=torch.float)
-        self.count = torch.tensor([0], dtype=torch.int)
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
 
-    def update(self, value, n=1):
-        self.value = value
-        self.sum += value * n
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
 
@@ -59,26 +61,27 @@ def accuracy(output, target, dataset: ClothesClassificationDataset):
 def fitness(metrics, weights=None, useloss=True):
     """ Model fitness as weighted combination of metrics
     weight for total_loss, type_loss, color_loss, type_acc, avg_color_acc
-
+    default to use loss for monitoring
+    if use loss to monitor, please set acc weights to zeros vice versa
     """
-    assert metrics.shape == weights.shape, "Metrics and weights combination must have same shape"
-    if weights is None:
-        weights = torch.tensor([0.5, 0.2, 0.3, 0.0, 0.0]) # default use loss not acc
-        # the smaller the loss the better
-        return 1.0 - torch.matmul(metrics, weights) # -> the
+    if weights is not None:
+        assert metrics.shape == weights.shape, "Metrics and weights combination must have same shape"
+    if useloss:
+        if weights is None:
+            weights = np.array([0.5, 0.2, 0.3, 0.0, 0.0]) # default use loss not acc
+            # the smaller the loss the better
+        else:
+            weights[2:] = 0.0 # zeros out the acc weights
+        return 100 - np.dot(metrics, weights) # -> the larger the value the better
     elif not useloss:
         if weights is None:
-            weights = torch.tensor([0.0, 0.0, 0.0, 0.5, 0.5])
+            weights = np.array([0.0, 0.0, 0.0, 0.5, 0.5]) # the larger the acc the better
+        else:
+            weights[:3] = 0.0 # zeros out the loss weights
+        return np.dot(metrics, weights) # -> the larger the value the better
+
 
 
 
 if __name__ == '__main__':
-    outputs = [torch.rand((4, 4)), 0]
-    targets = torch.tensor([
-        [0, 0, 1, 0],
-        [1, 0, 0, 0],
-        [1, 0, 0, 0],
-        [0, 1, 0, 0]
-    ])
-    res = accuracy(outputs, targets, 4)
-    print(res)
+    pass
