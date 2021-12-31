@@ -133,7 +133,7 @@ def run(args):
             optimizer.step()
 
         # compute color acc
-        num_color_dict = train_dataset.get_statistic()
+        num_color_dict = train_dataset.get_color_statistic()
         total_color = np.array(list(num_color_dict.values()))
         color_acc = correct_colors / total_color
         avg_color_acc = np.sum(color_acc) / train_dataset.color_len
@@ -194,6 +194,7 @@ def parse_args():
     parser.add_argument('--resume', action='store_true', help='load entire model with your trained weights')
     parser.add_argument('--weight', type=str, required=False, help='path to your trained weights')
     parser.add_argument('--epochs', type=int, default=50, help='number of training epochs')
+    parser.add_argument('--fitness_weight', '-fn', )
     parser.add_argument('--save_dir', type=str, required=False, help='path to save your training model weights')
     parser.add_argument('--noval', action='store_true', help="flag to set if don't want to evaluate on a validation set")
     return parser.parse_args()

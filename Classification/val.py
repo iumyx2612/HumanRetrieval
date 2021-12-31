@@ -78,7 +78,7 @@ def run(dataset: ClothesClassificationDataset,
             color_losses.update(color_loss.item(), inputs.size(0))
 
         # compute color acc
-        num_color_dict = dataset.get_statistic()
+        num_color_dict = dataset.get_color_statistic()
         total_color = np.array(list(num_color_dict.values()))
         color_acc = correct_colors / total_color
         avg_color_acc = np.sum(color_acc) / dataset.color_len
