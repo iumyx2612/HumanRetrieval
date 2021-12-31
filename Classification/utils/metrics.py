@@ -66,6 +66,8 @@ def fitness(metrics, weights=None, useloss=True):
     """
     if weights is not None:
         assert metrics.shape == weights.shape, "Metrics and weights combination must have same shape"
+        if not isinstance(weights, np.ndarray):
+            weights = np.asarray(weights)
     if useloss:
         if weights is None:
             weights = np.array([0.5, 0.2, 0.3, 0.0, 0.0]) # default use loss not acc
