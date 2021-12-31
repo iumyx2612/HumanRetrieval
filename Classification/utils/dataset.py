@@ -5,6 +5,9 @@ import numpy as np
 from tqdm import tqdm
 import pickle
 import yaml
+import matplotlib
+import matplotlib.pyplot as plt
+
 
 import cv2
 import torch
@@ -103,26 +106,67 @@ class ClothesClassificationDataset(Dataset):
         return sample
 
 
-    def get_statistic(self):
+    def get_color_statistic(self):
         dataframe = self.get_csv()
-        cache_path = os.path.join(self.path, "statistic.cache")
+        cache_path = os.path.join(self.path, "color_statistic.cache")
         if not os.path.exists(cache_path):
             num_color_dict = {}
             for i in range(self.color_len):
-                var = f'num_{self.clothes_color[i]}'
+                var = f'{self.clothes_color[i]}'
                 num_color_dict[var] = 0
             color_series = dataframe["clothes_color"]
             for colors in color_series:
                 colors = colors.split('_')
                 for color in colors:
                     color = color.lower()
-                    num_color_dict[f'num_{color}'] += 1
-            with open(os.path.join(self.path, "statistic.cache"), 'wb') as f:
+                    num_color_dict[f'{color}'] += 1
+            with open(cache_path, 'wb') as f:
                 pickle.dump(num_color_dict, f)
-        with open(os.path.join(self.path, "statistic.cache"), 'rb') as f:
+        with open(cache_path, 'rb') as f:
             num_color_dict = pickle.load(f)
         return num_color_dict
 
+
+    def plot_labels(self, save_dir):
+        print(f"Plotting labels to {save_dir}/labels.jpg...")
+        dataframe = self.get_csv()
+        cache_path = os.path.join(self.path, "type_statistic.cache")
+        if not os.path.exists(cache_path):
+            # construct dict for storing clothes type
+            num_type_dict = {}
+            for i in range(self.type_len):
+                key = f'{self.clothes_type[i]}'
+                num_type_dict[key] = 0
+
+            # count value to clothes type
+            for _type in dataframe["clothes_type"]:
+                num_type_dict[_type] += 1
+
+            # save to cache
+            with open(cache_path, 'wb') as f:
+                pickle.dump(num_type_dict, f)
+
+        with open(cache_path, 'rb') as f:
+            num_type_dict = pickle.load(f)
+        num_color_dict = self.get_color_statistic()
+
+        matplotlib.use('svg')  # faster
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+
+        # plot types
+        num_type = [v for v in num_type_dict.values()]
+        types = [k for k in num_type_dict.keys()]
+        ax1.bar(types, num_type)
+
+        # plot color
+        num_color = [v for v in num_color_dict.values()]
+        colors = [k for k in num_color_dict.keys()]
+        ax2.bar(colors, num_color)
+
+        plt.show()
+        plt.savefig(f"{save_dir}/labels.jpg")
+        matplotlib.use('Agg')
+        plt.close()
 
 
 def create_dataloader(dataset, imgsz, batch_size, workers, task='train', augment=False, augment_config=None):
@@ -133,7 +177,7 @@ def create_dataloader(dataset, imgsz, batch_size, workers, task='train', augment
         data_dict = dataset
 
     path = os.path.join(data_dict['root'], task)
-    cls_dict: dict = dataset['class']
+    cls_dict: dict = data_dict['class']
     dataset = ClothesClassificationDataset(path, task, cls_dict, imgsz, augment, augment_config)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 
