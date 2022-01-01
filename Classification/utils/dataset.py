@@ -127,8 +127,8 @@ class ClothesClassificationDataset(Dataset):
         return num_color_dict
 
 
-    def plot_labels(self, save_dir):
-        print(f"Plotting labels to {save_dir}/labels.jpg...")
+    def plot_labels(self):
+        print(f"Plotting labels to {self.path}/labels.jpg...")
         dataframe = self.get_csv()
         cache_path = os.path.join(self.path, "type_statistic.cache")
         if not os.path.exists(cache_path):
@@ -151,21 +151,25 @@ class ClothesClassificationDataset(Dataset):
         num_color_dict = self.get_color_statistic()
 
         matplotlib.use('svg')  # faster
-        fig, (ax1, ax2) = plt.subplots(1, 2)
 
         # plot types
+        fig1, ax1 = plt.subplots(figsize=(20, 6))
         num_type = [v for v in num_type_dict.values()]
         types = [k for k in num_type_dict.keys()]
+        ax1.set_xticks(range(len(types)))
         ax1.bar(types, num_type)
+        plt.savefig(f"{self.path}/types_label.jpg")
 
         # plot color
+        fig2, ax2 = plt.subplots(figsize=(20, 6))
         num_color = [v for v in num_color_dict.values()]
         colors = [k for k in num_color_dict.keys()]
+        ax2.set_xticks(range(len(colors)))
         ax2.bar(colors, num_color)
+        plt.savefig(f"{self.path}/colors_label.jpg")
 
-        plt.show()
-        plt.savefig(f"{save_dir}/labels.jpg")
         matplotlib.use('Agg')
+        plt.show()
         plt.close()
 
 
