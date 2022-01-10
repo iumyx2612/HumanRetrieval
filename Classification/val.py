@@ -38,7 +38,7 @@ def run(dataset: ClothesClassificationDataset,
     type_losses = AverageMeter()
     color_losses = AverageMeter()
     acc1 = AverageMeter()  # acc for clothes type
-    correct_colors = np.array([0] * dataset.color_len, dtype=np.int_)  # number of correct color predictions
+    correct_colors = torch.tensor([0] * dataset.color_len)  # number of correct color predictions
 
     training = model is not None # check if called by train.py
     if training:
@@ -72,7 +72,7 @@ def run(dataset: ClothesClassificationDataset,
             # accuracy and loss
             type_acc, color_matching = accuracy(outputs, targets, dataset)
             acc1.update(type_acc.item(), inputs.size(0))
-            correct_colors += color_matching.numpy()
+            correct_colors += color_matching
             losses.update(total_loss.item(), inputs.size(0))
             type_losses.update(type_loss.item(), inputs.size(0))
             color_losses.update(color_loss.item(), inputs.size(0))
@@ -81,7 +81,7 @@ def run(dataset: ClothesClassificationDataset,
         num_color_dict = dataset.get_color_statistic()
         total_color = np.array(list(num_color_dict.values()))
         color_acc = correct_colors / total_color
-        avg_color_acc = np.sum(color_acc) / dataset.color_len
+        avg_color_acc = torch.sum(color_acc) / dataset.color_len
 
         # logging
         s = ""

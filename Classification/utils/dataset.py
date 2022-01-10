@@ -7,6 +7,8 @@ import pickle
 import yaml
 import matplotlib
 import matplotlib.pyplot as plt
+from pathlib import Path
+import glob
 
 
 import cv2
@@ -19,6 +21,7 @@ from utils.augmentation import Augmentation
 
 
 IMG_FORMATS = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']  # acceptable image suffixes
+VID_FORMATS = ['mov', 'avi', 'mp4', 'mpg', 'mpeg', 'm4v', 'wmv', 'mkv']  # acceptable video suffixes
 
 
 class ClothesClassificationDataset(Dataset):
@@ -173,7 +176,7 @@ class ClothesClassificationDataset(Dataset):
         plt.close()
 
 
-def create_dataloader(dataset, imgsz, batch_size, workers, task='train', augment=False, augment_config=None):
+def create_dataloader(dataset, imgsz, batch_size=32, workers=2, task='train', augment=False, augment_config=None):
     if not isinstance(dataset, dict):
         with open(dataset) as f:
             data_dict = yaml.safe_load(f)
@@ -186,3 +189,38 @@ def create_dataloader(dataset, imgsz, batch_size, workers, task='train', augment
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 
     return dataloader, dataset
+
+
+class LoadImage:
+    # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
+    def __init__(self, path):
+        p = str(Path(path).resolve())  # os-agnostic absolute path
+        if '*' in p:
+            files = sorted(glob.glob(p, recursive=True))  # glob
+        elif os.path.isdir(p):
+            files = sorted(glob.glob(os.path.join(p, '*.*')))  # dir
+        elif os.path.isfile(p):
+            files = [p]  # files
+        else:
+            raise Exception(f'ERROR: {p} does not exist')
+
+        images = [x for x in files if x.split('.')[-1].lower() in IMG_FORMATS]
+        videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
+        ni, nv = len(images), len(videos)
+        self.nf = ni + nv  # number of files
+        self.files = images + videos
+
+    def __iter__(self):
+        self.count = 0
+        return self
+
+    def __next__(self):
+        if self.count == self.nf:
+            raise StopIteration
+        path = self.files[self.count]
+        self.count += 1
+        img0 = cv2.imread(path)  # BGR
+        assert img0 is not None, f'Image Not Found {path}'
+        s = f'image {self.count}/{self.nf} {path}: '
+
+        return path, img0

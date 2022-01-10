@@ -83,7 +83,7 @@ def convert_output(dict: dict, input):
         if color_output[0, i] == 1:
             color = colors[i]
             color_pred.append(color)
-    return type_pred, color_pred
+    return type_pred, color_pred #string, list
 
 
 if __name__ == '__main__':

@@ -45,12 +45,13 @@ def run(args):
     # from yaml
     with open(dataset) as f:
         dataset = yaml.safe_load(f) # datadict
-    with open(augmentations) as f:
-        augmentations = yaml.safe_load(f) # augmentation hyps
+    if augmentations is not None:
+        with open(augmentations) as f:
+            augmentations = yaml.safe_load(f) # augmentation hyps
 
     # dataset
     train_loader, train_dataset = create_dataloader(dataset, imgsz, batch_size, workers, task='train',
-                                                    augment=True, augment_config=augmentations)
+                                                    augment=True if augmentations is not None else False, augment_config=augmentations)
     if not args.noval:
         val_loader, val_dataset = create_dataloader(dataset, imgsz, batch_size, workers, task='val',
                                                     augment=False, augment_config=None)
@@ -100,7 +101,7 @@ def run(args):
         type_losses = AverageMeter()
         color_losses = AverageMeter()
         acc1 = AverageMeter()  # acc for clothes type
-        correct_colors = np.array([0] * train_dataset.color_len, dtype=np.int)  # number of correct color predictions
+        correct_colors = torch.tensor([0] * train_dataset.color_len)  # number of correct color predictions
 
         model.train() # set the model to training mode
 
@@ -122,7 +123,7 @@ def run(args):
             # color_matching: torch.Tensor on cpu
             type_acc, color_matching = accuracy(outputs, targets, train_dataset)
             acc1.update(type_acc.item(), inputs.size(0))
-            correct_colors += color_matching.numpy()
+            correct_colors += color_matching
             losses.update(total_loss.item(), inputs.size(0))
             type_losses.update(type_loss.item(), inputs.size(0))
             color_losses.update(color_loss.item(), inputs.size(0))
@@ -136,7 +137,7 @@ def run(args):
         num_color_dict = train_dataset.get_color_statistic()
         total_color = np.array(list(num_color_dict.values()))
         color_acc = correct_colors / total_color
-        avg_color_acc = np.sum(color_acc) / train_dataset.color_len
+        avg_color_acc = torch.sum(color_acc) / train_dataset.color_len
 
         end = time.time()
         epoch_time = end - start
@@ -154,7 +155,6 @@ def run(args):
               f'{s} \n')
 
         if not args.noval:
-            print(f"Validating on epoch {epoch + 1}")
             losses, type_loss, color_loss, acc1, avg_color_acc = val.run(
                 val_dataset, val_loader, device=device, loss=loss, model=model, epoch=epoch
             )

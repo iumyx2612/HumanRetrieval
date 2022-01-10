@@ -10,6 +10,10 @@ import torch.nn as nn
 from torchvision import transforms
 
 
+#TODO: do a class map into the model for easy inference
+#TODO: construct model from config file
+
+
 class Model(nn.Module):
     def __init__(self, base_model: str,
                  use_pretrained:bool,
@@ -46,12 +50,14 @@ class Model(nn.Module):
     def preprocess(self, imgs):
         """ Pre-process any given image or image batch to have desired input shape """
         #imgsz = get_imgsz(self.base_model)
+        device = next(self.base_model.parameters()).device
         if isinstance(imgs, np.ndarray):
+            imgs = imgs[:, :, ::-1] # BGR to RGB
             if imgs.ndim != 4:
                 imgs = np.expand_dims(imgs, axis=0) # b, h, w, c
             imgs = imgs.transpose((0, 3, 1, 2)) # to b, c, h, w
             imgs = imgs.copy()
-            imgs = torch.from_numpy(imgs) # torch.Tensor
+            imgs = torch.from_numpy(imgs).to(device) # torch.Tensor
         # sanity check
         assert isinstance(imgs, torch.Tensor), "input must be a numpy array or torch Tensor"
         assert imgs.dim() == 4, "Tensor must have shape (b, c, h, w)"
@@ -67,7 +73,7 @@ class Model(nn.Module):
         if isinstance(config, dict):
             cfg = config
         else:
-            raise
+            raise FileNotFoundError
         self.base_model = cfg["extractor"]
         self.num_cls1 = len(cfg["num_cls1"])
         self.num_csl2 = len(cfg["num_cls2"])

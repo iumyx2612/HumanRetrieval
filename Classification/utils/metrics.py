@@ -5,6 +5,14 @@ from utils.utils import convert_categorial
 from utils.dataset import ClothesClassificationDataset
 
 
+class ConfusionMatrix:
+    def __init__(self, nc, conf=0.25):
+        pass
+    def process_batch(self):
+        pass
+
+
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
@@ -81,8 +89,6 @@ def fitness(metrics, weights=None, useloss=True):
         else:
             weights[:3] = 0.0 # zeros out the loss weights
         return np.dot(metrics, weights) # -> the larger the value the better
-
-
 
 
 if __name__ == '__main__':
