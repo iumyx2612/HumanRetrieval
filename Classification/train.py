@@ -109,7 +109,7 @@ def run(args):
 
         start = time.time()
 
-        for i, sample in tqdm(enumerate(train_loader), desc="Training batch", unit='batch'):
+        for i, sample in enumerate(tqdm(train_loader, desc="Training batch", unit='batch')):
             # plot training batch for first 3 epochs
             if i < 3 and not resume:
                 plot_images(samples=sample, save_folder=save_dir, fname=f"train_batch{i+1}.jpg")
