@@ -10,7 +10,7 @@ import numpy as np
 
 from modeling.model import Model
 from utils.loss import Loss
-from utils.dataset import create_dataloader
+from utils.dataset import create_dataloader, plot_images
 from utils.utils import get_imgsz, select_device
 from utils.metrics import accuracy, AverageMeter, fitness
 import val
@@ -41,6 +41,8 @@ def run(args):
     # initialize
     device = select_device(device)
     imgsz = get_imgsz(extractor) # set image size to match with efficient-net scaling
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
 
     # from yaml
     with open(dataset) as f:
@@ -107,7 +109,11 @@ def run(args):
 
         start = time.time()
 
-        for sample in tqdm(train_loader, desc="Training batch", unit='batch'):
+        for i, sample in tqdm(enumerate(train_loader), desc="Training batch", unit='batch'):
+            # plot training batch for first 3 epochs
+            if i < 3 and not resume:
+                plot_images(samples=sample, save_folder=save_dir, fname=f"train_batch{i+1}.jpg")
+
             # prepare targets
             inputs = (sample["image"] / 255.).to(device) # torch.Tensor
             type_targets = sample["type_onehot"] # torch.Tensor

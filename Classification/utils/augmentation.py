@@ -80,7 +80,9 @@ class Augmentation:
                 fit_output=self.config["albumentation"]["affine"]["fit_output"],
                 p=self.config["albumentation"]["affine"]["prob"]
             )
-
+            self.augs.update({
+                "affine": self.affine
+            })
         list_transforms = [self.augs[transform] for transform in self.augs.keys()]
 
         self.transforms = A.Compose(list_transforms)

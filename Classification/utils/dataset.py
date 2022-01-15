@@ -1,14 +1,16 @@
 import os, sys
-import pandas as pd
 from ast import literal_eval
-import numpy as np
-from tqdm import tqdm
 import pickle
-import yaml
-import matplotlib
-import matplotlib.pyplot as plt
 from pathlib import Path
 import glob
+
+import math
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import yaml
 
 
 import cv2
@@ -172,7 +174,6 @@ class ClothesClassificationDataset(Dataset):
         plt.savefig(f"{self.path}/colors_label.jpg")
 
         matplotlib.use('Agg')
-        plt.show()
         plt.close()
 
 
@@ -189,6 +190,27 @@ def create_dataloader(dataset, imgsz, batch_size=32, workers=2, task='train', au
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 
     return dataloader, dataset
+
+
+def plot_images(samples, save_folder, fname='images.jpg', max_size=1920, max_subplots=9):
+    images = samples["image"] # torch.Tensor, (B, C, H, W), RGB
+    images = images.numpy() # np array
+    t = samples["type"] # clothes type
+    c = samples["color"] # clothes color
+    bs, _, h, w = images.shape # batch size, channel, height, width
+    bs = min(bs, max_subplots) # limit subplot images
+    ns = int(np.ceil(bs ** 0.5)) # number of subplots (square)
+
+    fig = plt.figure(figsize=(20, 20))
+    for i, image in enumerate(images):
+        if i == bs:
+            break
+        image = image.transpose((1, 2, 0)) # (H, W, C)
+        ax = fig.add_subplot(ns, ns, i+1)
+        ax.imshow(image)
+        ax.set_title(f"{t[i]} \n {c[i]}")
+
+    plt.savefig(f"{save_folder}/{fname}")
 
 
 class LoadImage:
