@@ -1,4 +1,4 @@
-from Classification.utils.utils import convert_categorial
+from utils.utils import convert_categorial
 
 import torch.nn as nn
 import torch
@@ -33,7 +33,7 @@ class Loss():
         #define criteria
         self.num_cls1 = num_cls1
         if label_smoothing0 is not None:
-            self.type_criterion = CrossEntropyLabelSmoothing(smoothing=label_smoothing0)
+            self.type_criterion = CrossEntropyLabelSmoothing()
         else:
             self.type_criterion = nn.CrossEntropyLoss()
         self.color_criterion = nn.BCELoss()
@@ -93,8 +93,8 @@ def test_label_smoothing():
 
 
 if __name__ == '__main__':
+    test_label_smoothing()
     pass
-    #test_label_smoothing()
 
 
 
