@@ -83,8 +83,15 @@ class Augmentation:
             self.augs.update({
                 "affine": self.affine
             })
-        list_transforms = [self.augs[transform] for transform in self.augs.keys()]
+        if self.config["albumentation"]["fliplr"]["prob"] > 0:
+            self.fliplr = A.HorizontalFlip(
+                p=self.config["albumentation"]["fliplr"]["prob"]
+            )
+            self.augs.update({
+                "fliplr": self.fliplr
+            })
 
+        list_transforms = [self.augs[transform] for transform in self.augs.keys()]
         self.transforms = A.Compose(list_transforms)
 
     def __call__(self, image):
