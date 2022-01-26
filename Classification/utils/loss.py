@@ -1,7 +1,22 @@
 from utils.utils import convert_categorial
 
+import torch.nn.functional as F
 import torch.nn as nn
 import torch
+
+
+class BCELabelSmoothing(nn.BCELoss):
+    def __init__(self, smoothing=0.1):
+        super(BCELabelSmoothing, self).__init__()
+        self.confidence = 1.0 - smoothing
+        self.smoothing = smoothing
+
+    def forward(self, pred, target):
+        with torch.no_grad():
+            true_dist: torch.Tensor = target.clone()
+            true_dist *= self.confidence
+            true_dist += (0.5 * self.smoothing)
+        return F.binary_cross_entropy(pred, true_dist)
 
 
 class CrossEntropyLabelSmoothing(nn.Module):
@@ -36,7 +51,10 @@ class Loss():
             self.type_criterion = CrossEntropyLabelSmoothing()
         else:
             self.type_criterion = nn.CrossEntropyLoss()
-        self.color_criterion = nn.BCELoss()
+        if label_smoothing1 is not None:
+            self.color_criterion = BCELabelSmoothing()
+        else:
+            self.color_criterion = nn.BCELoss()
 
     def __call__(self, predictions, targets):
         """
@@ -75,26 +93,52 @@ def test_label_smoothing():
 
     # TF implementation of Label Smoothing Cross Entropy
     y_true = tf.Variable([
-        [0, 1, 0]
+        [0, 1, 0],
+        [1, 0, 0]
     ], dtype=tf.float32)
     y_pred = tf.Variable([
+        [1, 8, 1],
         [1, 8, 1]
     ], dtype=tf.float32)
     loss = keras.losses.CategoricalCrossentropy(from_logits=True, label_smoothing=0.1)
     result = loss(y_true, y_pred)
     print(keras.backend.eval(result))
 
-    # My implementation based on Pytorch
-    y_true = torch.tensor([1])
-    y_pred = torch.tensor([[1, 8, 1]], dtype=torch.float)
+    # My implementation based on Pytorch for Label Smoothing Cross Entropy
+    y_true = torch.tensor([1, 0])
+    y_pred = torch.tensor([[1, 8, 1],
+                           [1, 8, 1]], dtype=torch.float)
     loss = CrossEntropyLabelSmoothing(smoothing=0.1)
     result = loss(y_pred, y_true)
     print(result.numpy())
 
+    # TF implementation of Label Smoothing Binary Cross Entropy
+    y_true = tf.Variable([
+        [0, 1, 0, 0],
+        [1, 0, 0, 1]
+    ], dtype=tf.float32)
+    y_pred = tf.Variable([
+        [0.2, 0.8, 0.7, 0.9],
+        [0.8, 0.1, 0.4, 0.6]
+    ], dtype=tf.float32)
+    loss = keras.losses.BinaryCrossentropy(from_logits=False, label_smoothing=0.1)
+    result = loss(y_true, y_pred)
+    print(keras.backend.eval(result))
+
+    # My implementation based on Pytorch for Label Smoothing Binary Cross Entropy
+    y_true = torch.tensor([[0, 1, 0, 0],
+                           [1, 0, 0, 1]], dtype=torch.float32)
+    y_pred = torch.tensor([[0.2, 0.8, 0.7, 0.9],
+                           [0.8, 0.1, 0.4, 0.6]], dtype=torch.float32)
+    loss = BCELabelSmoothing(smoothing=0.1)
+    result = loss(y_pred, y_true)
+    print(result.numpy())
+
+
 
 if __name__ == '__main__':
     test_label_smoothing()
-    pass
+    #pass
 
 
 
