@@ -44,14 +44,14 @@ class CrossEntropyLabelSmoothing(nn.Module):
 
 
 class Loss():
-    def __init__(self, num_cls1, label_smoothing0=None, label_smoothing1=None):
+    def __init__(self, num_cls1, label_smoothing0=False, label_smoothing1=False):
         #define criteria
         self.num_cls1 = num_cls1
-        if label_smoothing0 is not None:
+        if label_smoothing0:
             self.type_criterion = CrossEntropyLabelSmoothing()
         else:
             self.type_criterion = nn.CrossEntropyLoss()
-        if label_smoothing1 is not None:
+        if label_smoothing1:
             self.color_criterion = BCELabelSmoothing()
         else:
             self.color_criterion = nn.BCELoss()

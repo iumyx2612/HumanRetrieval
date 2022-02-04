@@ -4,6 +4,8 @@ import shutil
 import time
 import yaml
 import argparse
+import pprint
+pp = pprint.PrettyPrinter()
 
 import torch
 import numpy as np
@@ -33,10 +35,16 @@ def save_ckpt(save_dir, state, is_best=False, filename="last.pt"):
 
 
 def run(args):
-    device, dataset, augmentations, batch_size, workers,  \
+    device, dataset, augmentations, lsCE, lsBCE, batch_size, workers, \
     extractor, pretrained, resume, weight, epochs, save_dir = \
-          args.device, args.dataset, args.augmentation, args.batch_size, args.workers, \
-          args.extractor, args.pretrained, args.resume, args.weight, args.epochs, args.save_dir
+          args.device, args.dataset, args.augmentation, args.label_smoothing_CE, args.label_smoothing_BCE, \
+          args.batch_size, args.workers, args.extractor, args.pretrained, args.resume, args.weight, args.epochs, args.save_dir
+
+    s = "Training with "
+    slsCE = "Cross Entropy Label Smoothing" if lsCE else ""
+    slsBCE = "Binary Cross Entropy Label Smoothing" if lsBCE else ""
+    s = f"{s} {slsBCE} {slsCE}"
+    print(s)
 
     # initialize
     device = select_device(device)
@@ -50,6 +58,8 @@ def run(args):
     if augmentations is not None:
         with open(augmentations) as f:
             augmentations = yaml.safe_load(f) # augmentation hyps
+            pp.pprint(augmentations)
+
 
     # dataset
     train_loader, train_dataset = create_dataloader(dataset, imgsz, batch_size, workers, task='train',
@@ -73,7 +83,7 @@ def run(args):
                       train_dataset.color_len).to(device)
 
     # loss
-    loss = Loss(train_dataset.type_len)
+    loss = Loss(train_dataset.type_len, label_smoothing0=lsCE, label_smoothing1=lsBCE)
 
     # optimizer
     optimizer = torch.optim.Adam(model.parameters(), 1e-4)
@@ -110,7 +120,7 @@ def run(args):
         start = time.time()
 
         for i, sample in enumerate(tqdm(train_loader, desc="Training batch", unit='batch')):
-            # plot training batch for first 3 epochs
+            # plot training batch for first 3 batch and only at the first epoch
             if i < 3 and not resume and epoch == 0:
                 plot_images(samples=sample, save_folder=save_dir, fname=f"train_batch{i+1}.jpg")
 
@@ -142,7 +152,7 @@ def run(args):
         # compute color acc
         num_color_dict = train_dataset.get_color_statistic()
         total_color = np.array(list(num_color_dict.values()))
-        color_acc = correct_colors / total_color
+        color_acc = (correct_colors / total_color) * 100
         avg_color_acc = torch.sum(color_acc) / train_dataset.color_len
 
         end = time.time()
@@ -193,6 +203,8 @@ def parse_args():
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--dataset', default="config/dataset.yaml", type=str, help='path to dataset.yaml')
     parser.add_argument('--augmentation', default=None, type=str, help='path to augmentation.yaml')
+    parser.add_argument('--label_smoothing_CE', '-lsCE', action='store_true', help='use label smoothing on CrossEntropy')
+    parser.add_argument('--label_smoothing_BCE', '-lsBCE', action='store_true', help='use label smoothing on BCE')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size')
     parser.add_argument('--workers', type=int, default=2, help='number of workers')
     parser.add_argument('--extractor', type=str, default='efficientnet-b0', help='base feature extractor')
@@ -201,7 +213,7 @@ def parse_args():
     parser.add_argument('--weight', type=str, required=False, help='path to your trained weights')
     parser.add_argument('--epochs', type=int, default=50, help='number of training epochs')
     parser.add_argument('--fitness_weight', '-fn', )
-    parser.add_argument('--save_dir', type=str, required=False, help='path to save your training model weights')
+    parser.add_argument('--save_dir', type=str, default='saved_model', help='path to save your training model weights')
     parser.add_argument('--noval', action='store_true', help="flag to set if don't want to evaluate on a validation set")
     return parser.parse_args()
 

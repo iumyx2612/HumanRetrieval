@@ -26,7 +26,7 @@ def run(dataset: ClothesClassificationDataset,
     - type_loss
     - color_loss
     - type_acc
-    - total_color_acc
+    - avg_color_acc
     """
     if epoch:
         print(f"Validating on epoch {epoch + 1}")
@@ -80,7 +80,7 @@ def run(dataset: ClothesClassificationDataset,
         # compute color acc
         num_color_dict = dataset.get_color_statistic()
         total_color = np.array(list(num_color_dict.values()))
-        color_acc = correct_colors / total_color
+        color_acc = (correct_colors / total_color) * 100
         avg_color_acc = torch.sum(color_acc) / dataset.color_len
 
         # logging
@@ -104,6 +104,7 @@ def parse_args():
     parser.add_argument('--workers', type=int, default=2, help='number of workers')
     parser.add_argument('--extractor', type=str, default='efficientnet-b0', help='base feature extractor')
     parser.add_argument('--weight', type=str, required=False, help='path to your trained weights')
+    parser.add_argument('--task', type=str, default='val', help='dataset to eval, val or train')
     return parser.parse_args()
 
 
@@ -116,7 +117,7 @@ if __name__ == '__main__':
 
     # dataset
     dataloader, dataset = create_dataloader(args.dataset, imgsz, args.batch_size, args.workers,
-                                            task='val', augment=False, augment_config=None)
+                                            task=args.task, augment=False, augment_config=None)
 
     # loss
     loss = Loss(dataset.type_len)
