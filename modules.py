@@ -49,14 +49,15 @@ def config_Yolact(yolact_weight):
 
 # YOLOv5
 # ------------------------------------------------------------
-from yolov5.models.experimental import attempt_load
-from yolov5.utils_yolov5.general import check_img_size
+sys.path.insert(0, "Detection/yolov5")
 
-def config_Yolov5(yolo_weight, device, imgsz=416):
+from yolov5.models.common import DetectMultiBackend
+from yolov5.utils.general import check_img_size
+
+def config_Yolov5(yolo_weight, device, imgsz=640):
     # Load model
-    model = attempt_load(yolo_weight, map_location=device)  # load FP32 model
-    stride = int(model.stride.max())  # model stride
-    names = model.module.names if hasattr(model, 'module') else model.names  # get class names
+    model = DetectMultiBackend(yolo_weight, device=device)  # load FP32 model
+    stride, names = model.stride, model.names
     imgsz = check_img_size(imgsz, s=stride)
 
     return model, stride, names, imgsz
@@ -90,7 +91,14 @@ def config_deepsort(deepsort_cfg):
 # TODO: create a yaml config file to load classification model from
 from Classification.modeling.model import Model
 
-def config_clsmodel(clsmodel_config):
-    pass
+def config_clsmodel(weight, base_extractor, num_cls1, num_cls2, device):
+    model = Model(base_model=base_extractor,
+                  use_pretrained=False,
+                  num_class_1=num_cls1,
+                  num_class_2=num_cls2)
+    model.load_state_dict(torch.load(weight)['state_dict'])
+    model.eval()
+    model.to(device)
+    return model
 
 # ------------------------------------------------------------
