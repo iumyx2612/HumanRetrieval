@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 import cv2
 import shutil
+import yaml
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -30,6 +31,10 @@ def run(args):
     set_logging()
     device = select_device(args.device)
 
+    device = select_device(device)
+    with open(args.cls_data) as f:
+        cls_dataset = yaml.safe_load(f) # datadict
+
     # TODO: map with config data instead of string processing
     '''humans = args.humans
     if len(humans) == 1:
@@ -50,13 +55,12 @@ def run(args):
     net_YOLO, strides, yolo_name, imgsz = modules.config_Yolov5(args.yolo_weight, device)
     #deepsort = modules.config_deepsort(args.deepsort_cfg)
     net_cls = Model('efficientnet-b0',
-                  use_pretrained=False,
-                  num_class_1=12,
-                  num_class_2=9)
+                    use_pretrained=False,
+                    num_class_1=len(cls_dataset['class']['Type']),
+                    num_class_2=len(cls_dataset['class']['Color']))
     net_cls.load_state_dict(torch.load(args.cls_weight)['state_dict'])
     net_cls.to(device)
     net_cls.eval()
-
     # Load data
     # Re-use yolov5 data loading pipeline for simplicity
     webcam = args.source.isnumeric()
@@ -122,12 +126,13 @@ def run(args):
         im_yolact = im0s.copy() # copy to another image so we can draw on im0s later
         # type torch.Tensor, shape (batch, (bbox, conf, cls))
         # type int if no detection
+        t5 = time_sync()
         yolact_preds = run_eval_clothes(net_YOLACT,
                                         search_clothes=None,
                                         img_numpy=im_yolact)
-        t5 = time_sync()
+        t6 = time_sync()
         # inference time for YOLACT
-        dt3 = t5 - t4
+        print(f"YOLACT inference time: {t6 - t5:.4f}")
         # -----------------------------------------
 
         # Draw YOLO and YOLACT box
@@ -148,8 +153,7 @@ def run(args):
         # 4. Convert output from classification model to correct read-able format
         # 5. Draw bbox with type and color label
         # TODO: perform forward pass on batch of images instead of single image
-        t6 = time_sync()
-        clothes_labels = []
+        clothes_labels = ""
         if isinstance(yolact_preds, torch.Tensor):
             bboxes = yolact_preds[:, :4]  # np.ndarray
             for bbox in bboxes:
@@ -183,8 +187,8 @@ def parse_args():
     parser.add_argument('--device', default='')
     parser.add_argument('--yolact_weight', type=str, default="Detection/train_models/yolact_plus_resnet50_6_144000.pth")
     parser.add_argument('--yolo_weight', type=str, default="Detection/train_models/v5s_human_mosaic.pt")
-    #parser.add_argument('--deepsort_cfg', type=str, default="Detection/train_models/deep_sort.yaml")
     parser.add_argument('--cls_weight', type=str, default="Classification/weights/b0_best.pt")
+    parser.add_argument('--cls_data', type=str, default="Classification/config/dataset.yaml")
     parser.add_argument('--source', type=str, default='0')
     parser.add_argument('--humans', type=str)
     parser.add_argument('--clothes', type=str, default='short_sleeved_shirt')
