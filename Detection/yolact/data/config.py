@@ -841,6 +841,8 @@ yolact_plus_resnet50_config = yolact_plus_base_config.copy({
         'preapply_sqrt': False,
         'use_square_anchors': False,
     }),
+    'num_classes': len(clothes_dataset.class_names) + 1,
+    'dataset': clothes_dataset
 })
 
 yolact_plus_resnet101_clothes_config = yolact_plus_base_config.copy({
