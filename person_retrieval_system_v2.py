@@ -3,6 +3,7 @@ import os, sys
 import argparse
 import numpy as np
 import cv2
+import shutil
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -11,16 +12,18 @@ import torch.backends.cudnn as cudnn
 import modules
 from Classification.modeling.model import Model
 from Classification.Classification_dict import dict as cls_dict
-from Detection.yolov5.utils_yolov5.datasets import LoadImages, LoadStreams, IMG_FORMATS
-from Detection.yolov5.utils_yolov5.torch_utils import time_sync, select_device
-from Detection.yolov5.utils_yolov5.general import set_logging, non_max_suppression, xyxy2xywh
-from Detection.yolov5.utils_yolov5.plots import Annotator
+from Detection.yolov5.utils.datasets import LoadImages, LoadStreams, IMG_FORMATS
+from Detection.yolov5.utils.torch_utils import time_sync, select_device
+from Detection.yolov5.utils.general import set_logging, non_max_suppression, xyxy2xywh, scale_coords
+from Detection.yolov5.utils.plots import Annotator
 
 from Detection.eval_clothes import run_eval_clothes
 
+from Detection.deep_sort.deep_sort_pytorch.utils.draw import draw_boxes
+
 from Classification.utils import utils
 
-# TODO: print time logging
+
 @torch.no_grad()
 def run(args):
     # Initialize
@@ -28,11 +31,11 @@ def run(args):
     device = select_device(args.device)
 
     # TODO: map with config data instead of string processing
-    humans = args.humans
+    '''humans = args.humans
     if len(humans) == 1:
         humans = [humans.index("".join(humans))]
     else:
-        humans = [0, 1]  # With 0 is male and 1 is female.
+        humans = [0, 1]  # With 0 is male and 1 is female.'''
 
     if ',' in args.clothes:
         clothes = args.clothes.split(',')
@@ -43,29 +46,31 @@ def run(args):
         raise ValueError(f"Have any category not exist in parameter classes")'''
 
     # Load nets
-    net_YOLACT = modules.config_Yolact(args.yolact_weight, device)
-    net_YOLO, strides, name, imgsz = modules.config_Yolov5(args.yolo_weight, device)
-    deepsort = modules.config_deepsort(args.deepsort_cfg)
-    net_cls = Model("efficientnet-b0",
-                    True,
-                    len(cls_dict["Type"]),
-                    len(cls_dict["Color"]))
+    net_YOLACT, yolact_name = modules.config_Yolact(args.yolact_weight)
+    net_YOLO, strides, yolo_name, imgsz = modules.config_Yolov5(args.yolo_weight, device)
+    #deepsort = modules.config_deepsort(args.deepsort_cfg)
+    net_cls = Model('efficientnet-b0',
+                  use_pretrained=False,
+                  num_class_1=12,
+                  num_class_2=9)
+    net_cls.load_state_dict(torch.load(args.cls_weight)['state_dict'])
+    net_cls.to(device)
+    net_cls.eval()
 
     # Load data
     # Re-use yolov5 data loading pipeline for simplicity
     webcam = args.source.isnumeric()
-    is_img = True if any(ext in args.source for ext in IMG_FORMATS) else False
 
     if webcam:
         cudnn.benchmark = True  # set True to speed up constant image size inference
         dataset = LoadStreams(args.source, img_size=imgsz, stride=strides) # (sources, letterbox_img: np, orig_img: cv2, None)
-        bs = len(dataset)  # batch_size
     else:
         dataset = LoadImages(args.source, img_size=imgsz, stride=strides) # (path, letterbox_img: np, orig_img: cv2, cap)
-        bs = 1
 
+    cv2.namedWindow("A", cv2.WINDOW_FREERATIO)
+    cv2.resizeWindow("A", 1280, 720)
     # saving prediction video
-    if args.save_vid:
+    if args.savevid:
         width = next(iter(dataset))[3].get(cv2.CAP_PROP_FRAME_WIDTH)
         height = next(iter(dataset))[3].get(cv2.CAP_PROP_FRAME_HEIGHT)
         res = (int(width), int(height))
@@ -76,7 +81,9 @@ def run(args):
 
 
     # Run Inference
-    for path, im, im0s, vid_cap in dataset:
+    for path, im, im0s, vid_cap, _ in dataset:
+        human_label = ""
+        is_img = True if any(ext in path for ext in IMG_FORMATS) else False
         annotator = Annotator(np.ascontiguousarray(im0s),
                               line_width=2,
                               font_size=1)
@@ -92,15 +99,21 @@ def run(args):
         # time logging for data loading
         dt0 = t2 - t1
         # Inference on yolov5
-        yolo_preds = net_YOLO(im_yolo)[0] # (batch, (bbox, conf, class)) type torch.Tensor
+        yolo_preds = net_YOLO(im_yolo) # (batch, (bbox, conf, class)) type torch.Tensor
         t3 = time_sync()
+        print(f"YOLO inference time: {t3 - t2:.4f}")
         # time logging for yolo predicting
-        dt1 = t3 - t2
         # nms for yolo
-        yolo_preds = non_max_suppression(yolo_preds, args.yolo_conf_thres, args.yolo_iou_thres, humans, max_det=args.yolo_maxdets)
+        # yolo_preds: torch.Tensor
+        yolo_preds = non_max_suppression(yolo_preds, 0.6, 0.5, None, max_det=100)[0]
         t4 = time_sync()
         # nms time for yolo
-        dt2 = t4 - t3
+        print(f"YOLO nms time: {t4 - t3:.4f}")
+
+        # scale yolo preds to im0 for drawing
+        if len(yolo_preds):
+            yolo_preds[:, :4] = scale_coords(im_yolo.shape[2:], yolo_preds[:, :4], im0s.shape).round()
+
         # -----------------------------------------
 
         # yolact inference
@@ -110,65 +123,23 @@ def run(args):
         # type torch.Tensor, shape (batch, (bbox, conf, cls))
         # type int if no detection
         yolact_preds = run_eval_clothes(net_YOLACT,
-                                        search_clothes=clothes,
+                                        search_clothes=None,
                                         img_numpy=im_yolact)
         t5 = time_sync()
         # inference time for YOLACT
         dt3 = t5 - t4
         # -----------------------------------------
 
-        # TODO: shorten the entire things
-        # deepsort
-        # -----------------------------------------
-        # A list of objects satisfying 2 properties
-        list_det = []  # list of torch.Tensor containing bbox of human
-        if type(yolact_preds) == torch.Tensor and type(yolo_preds) == torch.Tensor:
-            yolact_preds = yolact_preds.cpu().numpy()
-            yolo_preds = yolo_preds.cpu().data.numpy()
-
-            # Calculate inters set A and B
-            def inters(bbox_a, bbox_b):
-                # determine the coordinates of the intersection rectangle
-                x_left = max(bbox_a[0], bbox_b[0])
-                y_left = max(bbox_a[1], bbox_b[1])
-                x_right = min(bbox_a[2], bbox_b[2])
-                y_right = min(bbox_a[3], bbox_b[3])
-                if (x_right - x_left) * (y_right - y_left) >= 0:
-                    return (x_right - x_left) * (y_right - y_left)
-                else:
-                    return 0
-
-            # Count = length of clothes: Draw bbox.
-            # Count = not length of clothes: Not Draw bbox.
-            for i in range(yolo_preds.shape[0]):
-                count = 0
-                for j in range(yolact_preds.shape[0]):
-                    # Calculate area.
-                    area_j = (yolact_preds[j][2] - yolact_preds[j][0]) * (
-                                yolact_preds[j][3] - yolact_preds[j][1])
-                    area = inters(yolo_preds[i, :4], yolact_preds[j, :4])
-                    # Conditional
-                    if area / area_j > 0.7:
-                        count += 1
-
-                if count == len(args.clothes):
-                    list_det.append(np.array(yolo_preds[i, :], dtype=np.float_).tolist())
-
-            # If length of list_det not equal 0 -> use deepsort
-            if len(list_det) != 0:
-                list_det = np.array(list_det)
-                det = torch.from_numpy(list_det)
-                xywhs = xyxy2xywh(det[:, 0:4])
-                confs = det[:, 4]
-                clss = det[:, 5]
-
-                outputs = deepsort.update(xywhs.cpu(), confs.cpu(), clss.cpu(),
-                                          im0s)  # np array (detections, [xyxy, track_id, class_id])
-                # draw boxes for visualization
-                # img_numpy = display_video(img_numpy, outputs, color=COLOR[0], search=search)
-            else:
-                deepsort.increment_ages()
-
+        # Draw YOLO and YOLACT box
+        for det_i, (*yolo_xyxy, yolo_conf, yolo_cls) in enumerate(yolo_preds):
+            c = int(yolo_cls)
+            label = f"{yolo_name[c]} {yolo_conf: .2f}"
+            #annotator.box_label(yolo_xyxy, label, color=(255, 0, 0))
+        '''if not isinstance(yolact_preds, int):
+            for det_i, (*yolact_xyxy, yolact_conf, yolact_cls) in enumerate(yolact_preds):
+                c = int(yolact_cls)
+                label = f"{yolact_name[c]} {yolact_conf: .2f}"
+                annotator.box_label(yolact_xyxy, label, color=(255, 0, 0))'''
         # classification
         # -----------------------------------------
         # 1. Read every single clothes ROI from yolact output one by one
@@ -178,49 +149,47 @@ def run(args):
         # 5. Draw bbox with type and color label
         # TODO: perform forward pass on batch of images instead of single image
         t6 = time_sync()
+        clothes_labels = []
         if isinstance(yolact_preds, torch.Tensor):
             bboxes = yolact_preds[:, :4]  # np.ndarray
             for bbox in bboxes:
                 roi = im0s[int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])]
-                cls_input = net_cls.preprocess(roi).to(device)
+                cls_input = net_cls.preprocess(roi)
                 cls_output = net_cls(cls_input)  # list (type, color)
                 # type_pred: string
                 # color_pred: list(string)
                 type_pred, color_pred = utils.convert_output(cls_dict, cls_output)
-                s = f"{type_pred}, {color_pred}"
-                annotator.box_label(bbox, label=s, color=(0, 0, 255))
+                #annotator.box_label(bbox, label=s, color=(0, 0, 255))
+
         t7 = time_sync()
         dt4 = t7 - t6
         # -----------------------------------------
 
         # show image
-        cv2.imshow("A", im0s)
-        if is_img:
-            cv2.waitKey(0)
-        else:
-            cv2.waitKey(1)
+        if args.view_img:
+            cv2.imshow("A", im0s)
+            if is_img:
+                cv2.waitKey(0)
+            else:
+                cv2.waitKey(1)
 
         # save preds
-        if args.save_vid:
+        if args.savevid:
             output.write(im0s)
-
-        # time logging
-        print(f"Inference time \n YOLO: {dt1} \t YOLACT: {dt3} \t Classification: {dt4}")
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='')
-    parser.add_argument('--yolact_weight', type=str, default="Detection/train_models/yolact_base_clothes_1_30000.pth")
-    parser.add_argument('--yolo_weight', type=str, default="Detection/train_models/yolo5s.pt")
-    parser.add_argument('--deepsort_cfg', type=str, default="Detection/train_models/deep_sort.yaml")
+    parser.add_argument('--yolact_weight', type=str, default="Detection/train_models/yolact_plus_resnet50_6_144000.pth")
+    parser.add_argument('--yolo_weight', type=str, default="Detection/train_models/v5s_human_mosaic.pt")
+    #parser.add_argument('--deepsort_cfg', type=str, default="Detection/train_models/deep_sort.yaml")
+    parser.add_argument('--cls_weight', type=str, default="Classification/weights/b0_best.pt")
     parser.add_argument('--source', type=str, default='0')
-    parser.add_argument('--yolo_conf_thres', '--yct', type=float, default=0.4)
-    parser.add_argument('--yolo_iou_thres', '--yit', type=float, default=0.5)
-    parser.add_argument('--yolo_maxdets', '--ymd', type=int, default=100)
-    parser.add_argument('--humans', type=str, default="male")
-    parser.add_argument('--clothes', type=str, default="short_sleeved_shirt")
-    parser.add_argument('--save_vid', action="store_true")
+    parser.add_argument('--humans', type=str)
+    parser.add_argument('--clothes', type=str, default='short_sleeved_shirt')
+    parser.add_argument('--view_img', action="store_true")
+    parser.add_argument('--savevid', action="store_true")
     parser.add_argument('--savename', type=str, default="results/out.avi")
     args = parser.parse_args()
     return args
