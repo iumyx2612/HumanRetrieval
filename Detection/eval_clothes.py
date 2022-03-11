@@ -97,8 +97,11 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
     # 
     index = []
     for j in range(num_dets_to_consider):
-        if _classes_[classes[j]] in cls:
-          index.append(j)
+        if cls is not None and _classes_[classes[j]] in cls:
+            index.append(j)
+        else:
+            index.append(j)
+
     # If not search clothes in argument => num_
     num_dets_to_consider = len(index)
 
@@ -179,7 +182,7 @@ def prep_display(dets_out, img, h, w, undo_transform=True, class_color=False, ma
         x1, y1, x2, y2 = boxes[index[j], :]
         score = scores[index[j]]
         # Classes for each detection
-        _cls_ = index[j] 
+        _cls_ = index[j]
 
         # Tensor
         if j == 0:
